@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Haunted Shadows Paranormal Deluxe</title>
+  <style>
+    :root{
+      --ink:#f3f1ff;
+      --panel:rgba(15,12,28,.66);
+      --line:rgba(255,255,255,.12);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;height:100%;overflow:hidden;background:#09070f;font-family:Arial,sans-serif;touch-action:none;color:var(--ink)}
+    #app{position:fixed;inset:0;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0%,#322153 0%,#171125 48%,#09070f 100%)}
+    #hud{position:relative;z-index:5;display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:max(10px,env(safe-area-inset-top)) 10px 10px;background:linear-gradient(to bottom,rgba(0,0,0,.24),rgba(0,0,0,0));font-size:14px;font-weight:700;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+    .hudBox{min-height:42px;display:flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:16px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(8px);box-shadow:0 10px 24px rgba(0,0,0,.18)}
+    #gameWrap{position:relative;flex:1;min-height:0}
+    canvas{width:100%;height:100%;display:block}
+    #topButtons{position:absolute;top:64px;right:10px;z-index:7;display:flex;gap:8px}
+    .smallBtn{border:0;padding:10px 12px;border-radius:14px;color:white;background:rgba(15,12,28,.62);border:1px solid var(--line);backdrop-filter:blur(6px);font-weight:700}
+    #controls{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-between;align-items:end;padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));pointer-events:none}
+    .cluster{display:flex;gap:10px;pointer-events:auto}
+    .btn{width:74px;height:74px;border:0;border-radius:22px;color:white;font-weight:800;font-size:28px;background:rgba(255,255,255,.10);backdrop-filter:blur(8px);box-shadow:inset 0 -5px 0 rgba(0,0,0,.2),0 10px 18px rgba(0,0,0,.24);user-select:none}
+    .btn:active{transform:translateY(2px)}
+    #jumpBtn{width:94px;height:94px;border-radius:50%;color:#351800;font-size:18px;background:linear-gradient(180deg,#ffd980,#ffab4e)}
+    #overlay{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(7,5,13,.42);padding:20px}
+    #overlayCard{width:min(92vw,460px);padding:22px;border-radius:26px;background:rgba(16,12,29,.86);border:1px solid var(--line);backdrop-filter:blur(12px);box-shadow:0 24px 70px rgba(0,0,0,.42);text-align:center}
+    .cta{width:100%;margin-top:12px;padding:14px;border:0;border-radius:16px;font-size:18px;font-weight:800;color:#0d210f;background:linear-gradient(180deg,#a2ffb8,#4fe07d);box-shadow:0 12px 28px rgba(0,0,0,.28)}
+    .logoTitle{font-size:clamp(28px,8vw,54px);line-height:.95;letter-spacing:1px;text-transform:uppercase;margin:0 0 10px;text-shadow:0 4px 0 rgba(0,0,0,.35),0 0 18px rgba(159,210,255,.2)}
+    .logoTop{color:#e6f3ff;display:block}
+    .logoBottom{color:#9fd2ff;display:block}
+    .pressStart{margin-top:14px;font-size:18px;letter-spacing:2px;text-transform:uppercase;animation:blink 1s steps(2,start) infinite;color:#ffd36d}
+    @keyframes blink{50%{opacity:.25}}
+    @media (min-width:700px){.btn{width:84px;height:84px}#jumpBtn{width:106px;height:106px}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="hudBox" id="leftHud">Souls: 0 · Lives: 3</div>
+    <div class="hudBox" id="centerHud">👻 Haunted Shadows Paranormal</div>
+    <div class="hudBox" id="rightHud">Level 1 · 0:00</div>
+  </div>
+  <div id="gameWrap">
+    <canvas id="game"></canvas>
+    <div id="topButtons">
+      <button class="smallBtn" id="soundBtn">🔊 Sound</button>
+      <button class="smallBtn" id="restartBtn">↻ Restart</button>
+    </div>
+    <div id="overlay">
+      <div id="overlayCard">
+        <h2 id="overlayTitle"><span class="logoTitle"><span class="logoTop">Haunted Shadows</span><span class="logoBottom">Paranormal</span></span></h2>
+        <p id="overlayText">A haunted stage-play platformer.</p>
+        <p id="overlaySub">Collect souls, light lanterns, defeat the bosses, and escape the shadows.</p>
+        <div id="pressStartText" class="pressStart">Press Start</div>
+        <button class="cta" id="startBtn">Start</button>
+      </div>
+    </div>
+    <div id="controls">
+      <div class="cluster">
+        <button class="btn" id="leftBtn">◀</button>
+        <button class="btn" id="rightBtn">▶</button>
+      </div>
+      <div class="cluster">
+        <button class="btn" id="jumpBtn">JUMP</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const overlaySub = document.getElementById('overlaySub');
+  const pressStartText = document.getElementById('pressStartText');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const soundBtn = document.getElementById('soundBtn');
+  const leftHud = document.getElementById('leftHud');
+  const centerHud = document.getElementById('centerHud');
+  const rightHud = document.getElementById('rightHud');
+
+  let W = 0, H = 0, lastTime = performance.now(), started = false, soundOn = true;
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * devicePixelRatio);
+    canvas.height = Math.round(H * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  const keys = { left:false, right:false, jump:false };
+  const gravity = 0.64, friction = 0.84, maxLives = 3;
+
+  const state = {
+    levelIndex: 0,
+    cameraX: 0,
+    souls: 0,
+    lives: maxLives,
+    over: false,
+    won: false,
+    invuln: 0,
+    powerTimer: 0,
+    startTs: performance.now(),
+    scene: 'title',
+    barrels: [],
+    particles: [],
+    screenShake: 0
+  };
+
+  const player = {
+    x: 80, y: 300, w: 30, h: 40, vx: 0, vy: 0,
+    speed: 0.74, maxSpeed: 5.8, jumpPower: 13.2,
+    onGround: false, facing: 1, walkFrame: 0
+  };
+
+  let worldWidth = 0, goal = null, solids = [], movers = [], pickups = [], enemies = [], boss = null, bossProjectiles = [];
+
+  const levels = [
+    {
+      name:'Level 1: Haunted Prison',
+      width:2700, skyTop:'#2f2258', skyMid:'#21143f', skyBot:'#0c0915',
+      start:{x:80,y:300}, goal:{x:2550,y:210,w:26,h:210},
+      solids:[
+        {x:0,y:500,w:2700,h:140,type:'floor'},
+        {x:220,y:430,w:120,h:22,type:'stone'},
+        {x:395,y:380,w:90,h:20,type:'stone'},
+        {x:540,y:330,w:90,h:20,type:'stone'},
+        {x:690,y:440,w:76,h:60,type:'coffin'},
+        {x:860,y:385,w:118,h:20,type:'stone'},
+        {x:1040,y:330,w:118,h:20,type:'stone'},
+        {x:1200,y:275,w:118,h:20,type:'stone'},
+        {x:1420,y:420,w:84,h:80,type:'coffin'},
+        {x:1600,y:350,w:130,h:20,type:'stone'},
+        {x:1800,y:300,w:130,h:20,type:'stone'},
+        {x:2000,y:250,w:120,h:20,type:'stone'},
+        {x:2210,y:390,w:100,h:20,type:'stone'}
+      ],
+      movers:[{x:1320,y:348,w:100,h:18,baseY:348,amp:70,speed:0.0019,phase:0.2,type:'moving'}],
+      pickups:[
+        {x:260,y:392,kind:'soul'},{x:435,y:342,kind:'soul'},{x:580,y:292,kind:'soul'},
+        {x:910,y:347,kind:'soul'},{x:1090,y:292,kind:'soul'},{x:1250,y:237,kind:'soul'},
+        {x:1650,y:312,kind:'soul'},{x:1850,y:262,kind:'soul'},{x:2050,y:212,kind:'soul'},
+        {x:2250,y:352,kind:'soul'},{x:1135,y:468,kind:'lantern'}
+      ],
+      enemies:[
+        {x:620,y:468,minX:560,maxX:760,type:'ghost',speed:1.1},
+        {x:980,y:468,minX:900,maxX:1160,type:'ghost',speed:1.2},
+        {x:1500,y:468,minX:1440,maxX:1620,type:'ghost',speed:1.18},
+        {x:2110,y:468,minX:2030,maxX:2280,type:'ghost',speed:1.28}
+      ]
+    },
+    {
+      name:'Level 2: Haunted Mansion (Boss)',
+      width:3500, skyTop:'#381a3b', skyMid:'#1f1025', skyBot:'#08060d',
+      start:{x:80,y:300}, goal:{x:3310,y:160,w:26,h:260},
+      solids:[
+        {x:0,y:500,w:3500,h:140,type:'floor'},
+        {x:210,y:425,w:120,h:22,type:'stone'},
+        {x:390,y:370,w:100,h:20,type:'stone'},
+        {x:560,y:315,w:100,h:20,type:'stone'},
+        {x:735,y:260,w:120,h:20,type:'stone'},
+        {x:940,y:450,w:76,h:50,type:'coffin'},
+        {x:1120,y:395,w:120,h:20,type:'stone'},
+        {x:1300,y:340,w:120,h:20,type:'stone'},
+        {x:1500,y:285,w:120,h:20,type:'stone'},
+        {x:1730,y:450,w:76,h:50,type:'coffin'},
+        {x:1910,y:390,w:130,h:20,type:'stone'},
+        {x:2100,y:335,w:130,h:20,type:'stone'},
+        {x:2300,y:280,w:120,h:20,type:'stone'},
+        {x:2550,y:450,w:82,h:50,type:'coffin'},
+        {x:2730,y:365,w:130,h:20,type:'stone'},
+        {x:3000,y:430,w:230,h:20,type:'stone'}
+      ],
+      movers:[
+        {x:960,y:330,w:96,h:18,baseY:330,amp:82,speed:0.0022,phase:0.1,type:'moving'},
+        {x:2400,y:285,w:96,h:18,baseY:285,amp:95,speed:0.0018,phase:1.1,type:'moving'}
+      ],
+      pickups:[
+        {x:250,y:387,kind:'soul'},{x:430,y:332,kind:'soul'},{x:600,y:277,kind:'soul'},
+        {x:780,y:222,kind:'soul'},{x:1160,y:357,kind:'soul'},{x:1340,y:302,kind:'soul'},
+        {x:1540,y:247,kind:'soul'},{x:1960,y:352,kind:'soul'},{x:2150,y:297,kind:'soul'},
+        {x:2350,y:242,kind:'soul'},{x:2790,y:327,kind:'soul'},{x:1810,y:468,kind:'lantern'},
+        {x:3070,y:388,kind:'lantern'}
+      ],
+      enemies:[
+        {x:860,y:468,minX:760,maxX:1020,type:'ghost',speed:1.32},
+        {x:1540,y:250,minX:1480,maxX:1620,type:'bat',speed:1.85},
+        {x:1830,y:468,minX:1740,maxX:2050,type:'ghost',speed:1.24},
+        {x:2450,y:468,minX:2350,maxX:2590,type:'ghost',speed:1.38},
+        {x:2850,y:332,minX:2740,maxX:2890,type:'bat',speed:1.94}
+      ],
+      boss:{x:3140,y:320,w:88,h:88,vx:1.6,minX:3020,maxX:3220,hits:10,type:'ghostKing',shotTimer:0}
+    },
+    {
+      name:'Level 3: Haunted Pub / Hotel',
+      width:3600, skyTop:'#1f264f', skyMid:'#151934', skyBot:'#070a12',
+      start:{x:80,y:300}, goal:{x:3430,y:160,w:26,h:260},
+      solids:[
+        {x:0,y:500,w:3600,h:140,type:'floor'},
+        {x:220,y:430,w:120,h:22,type:'stone'},
+        {x:420,y:370,w:110,h:20,type:'stone'},
+        {x:610,y:315,w:110,h:20,type:'stone'},
+        {x:800,y:260,w:120,h:20,type:'stone'},
+        {x:1030,y:440,w:78,h:60,type:'coffin'},
+        {x:1200,y:390,w:120,h:20,type:'stone'},
+        {x:1380,y:335,w:120,h:20,type:'stone'},
+        {x:1580,y:280,w:120,h:20,type:'stone'},
+        {x:1820,y:450,w:80,h:50,type:'coffin'},
+        {x:2010,y:395,w:120,h:20,type:'stone'},
+        {x:2200,y:340,w:120,h:20,type:'stone'},
+        {x:2400,y:285,w:120,h:20,type:'stone'},
+        {x:2660,y:450,w:82,h:50,type:'coffin'},
+        {x:2850,y:365,w:120,h:20,type:'stone'},
+        {x:3090,y:300,w:140,h:20,type:'stone'}
+      ],
+      movers:[
+        {x:930,y:330,w:96,h:18,baseY:330,amp:90,speed:0.0021,phase:0.4,type:'moving'},
+        {x:2520,y:305,w:96,h:18,baseY:305,amp:88,speed:0.0019,phase:1.2,type:'moving'}
+      ],
+      pickups:[
+        {x:260,y:390,kind:'soul'},{x:460,y:335,kind:'soul'},{x:650,y:280,kind:'soul'},
+        {x:840,y:225,kind:'soul'},{x:1240,y:355,kind:'soul'},{x:1420,y:300,kind:'soul'},
+        {x:1620,y:245,kind:'soul'},{x:2050,y:360,kind:'soul'},{x:2240,y:305,kind:'soul'},
+        {x:2440,y:250,kind:'soul'},{x:2890,y:330,kind:'soul'},{x:3190,y:265,kind:'soul'},
+        {x:1870,y:468,kind:'lantern'}
+      ],
+      enemies:[
+        {x:900,y:468,minX:780,maxX:1080,type:'ghost',speed:1.35},
+        {x:1670,y:245,minX:1590,maxX:1730,type:'bat',speed:2.0},
+        {x:1940,y:468,minX:1840,maxX:2140,type:'ghost',speed:1.34},
+        {x:2720,y:468,minX:2640,maxX:2900,type:'ghost',speed:1.42},
+        {x:3200,y:265,minX:3110,maxX:3270,type:'bat',speed:2.05}
+      ]
+    },
+    {
+      name:'Level 4: Haunted Doll Museum (Boss)',
+      width:3900, skyTop:'#3f1e2f', skyMid:'#24121e', skyBot:'#09060b',
+      start:{x:80,y:300}, goal:{x:3730,y:150,w:26,h:270},
+      solids:[
+        {x:0,y:500,w:3900,h:140,type:'floor'},
+        {x:220,y:430,w:120,h:22,type:'stone'},
+        {x:420,y:380,w:110,h:20,type:'stone'},
+        {x:610,y:330,w:110,h:20,type:'stone'},
+        {x:810,y:280,w:120,h:20,type:'stone'},
+        {x:1040,y:450,w:80,h:50,type:'coffin'},
+        {x:1220,y:390,w:120,h:20,type:'stone'},
+        {x:1410,y:340,w:120,h:20,type:'stone'},
+        {x:1620,y:290,w:120,h:20,type:'stone'},
+        {x:1860,y:450,w:82,h:50,type:'coffin'},
+        {x:2060,y:395,w:120,h:20,type:'stone'},
+        {x:2260,y:345,w:120,h:20,type:'stone'},
+        {x:2470,y:295,w:120,h:20,type:'stone'},
+        {x:2730,y:450,w:82,h:50,type:'coffin'},
+        {x:2940,y:390,w:120,h:20,type:'stone'},
+        {x:3160,y:340,w:120,h:20,type:'stone'},
+        {x:3400,y:430,w:240,h:20,type:'stone'}
+      ],
+      movers:[
+        {x:980,y:330,w:96,h:18,baseY:330,amp:84,speed:0.0022,phase:0.1,type:'moving'},
+        {x:2560,y:305,w:96,h:18,baseY:305,amp:98,speed:0.0017,phase:1.5,type:'moving'}
+      ],
+      pickups:[
+        {x:260,y:392,kind:'soul'},{x:460,y:345,kind:'soul'},{x:650,y:295,kind:'soul'},
+        {x:850,y:245,kind:'soul'},{x:1260,y:355,kind:'soul'},{x:1450,y:305,kind:'soul'},
+        {x:1660,y:255,kind:'soul'},{x:2100,y:360,kind:'soul'},{x:2300,y:310,kind:'soul'},
+        {x:2510,y:260,kind:'soul'},{x:2980,y:355,kind:'soul'},{x:3210,y:305,kind:'soul'},
+        {x:3470,y:390,kind:'lantern'}
+      ],
+      enemies:[
+        {x:930,y:468,minX:820,maxX:1080,type:'ghost',speed:1.38},
+        {x:1700,y:250,minX:1610,maxX:1750,type:'bat',speed:2.02},
+        {x:2130,y:468,minX:2030,maxX:2230,type:'ghost',speed:1.4},
+        {x:3010,y:468,minX:2910,maxX:3130,type:'ghost',speed:1.48}
+      ],
+      boss:{x:3520,y:310,w:86,h:96,vx:1.5,minX:3440,maxX:3640,hits:10,type:'granny',shotTimer:0}
+    }
+  ];
+
+  function cloneLevel(i){
+    const L = levels[i];
+    worldWidth = L.width;
+    goal = {...L.goal};
+    solids = L.solids.map(s=>({...s}));
+    movers = L.movers.map(m=>({...m}));
+    pickups = L.pickups.map(p=>({...p,taken:false,phase:Math.random()*Math.PI*2}));
+    enemies = L.enemies.map(e=>({...e,alive:true,dir:1,vx:e.speed,flap:0}));
+    boss = L.boss ? {...L.boss,alive:true,dir:1,flap:0,flash:0} : null;
+    bossProjectiles = [];
+    state.barrels = [];
+    state.particles = [];
+    player.x = L.start.x; player.y = L.start.y;
+    player.vx = 0; player.vy = 0; player.onGround = false;
+    state.cameraX = 0;
+  }
+
+  function showTitle(){
+    overlayTitle.innerHTML = '<span class="logoTitle"><span class="logoTop">Haunted Shadows</span><span class="logoBottom">Paranormal</span></span>';
+    overlayText.textContent = 'A haunted stage-play platformer.';
+    overlaySub.textContent = 'Collect souls, light lanterns, defeat the bosses, and escape the shadows.';
+    pressStartText.style.display = 'block';
+    startBtn.textContent = 'Start';
+    overlay.style.display = 'flex';
+  }
+
+  function showOverlay(t,txt,btn='Continue',sub=''){
+    overlayTitle.innerHTML = t;
+    overlayText.textContent = txt;
+    overlaySub.textContent = sub;
+    pressStartText.style.display = 'none';
+    startBtn.textContent = btn;
+    overlay.style.display = 'flex';
+  }
+  function hideOverlay(){ overlay.style.display = 'none'; }
+
+  function resetGame(full=true){
+    if(full){
+      state.levelIndex = 0;
+      state.souls = 0;
+      state.lives = maxLives;
+      state.startTs = performance.now();
+      state.won = false;
+    }
+    state.over = false;
+    state.invuln = 0;
+    state.powerTimer = 0;
+    state.scene = 'title';
+    cloneLevel(state.levelIndex);
+    showTitle();
+    updateHUD();
+  }
+
+  function rects(a,b){
+    return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+  }
+
+  function circleRect(c,r){
+    const cx = Math.max(r.x, Math.min(c.x, r.x+r.w));
+    const cy = Math.max(r.y, Math.min(c.y, r.y+r.h));
+    const dx = c.x-cx, dy = c.y-cy;
+    return dx*dx + dy*dy < c.r*c.r;
+  }
+
+  function allSolids(){ return [...solids,...movers]; }
+
+  function resolve(axis){
+    for(const s of allSolids()){
+      if(!rects(player,s)) continue;
+      if(axis==='x'){
+        if(player.vx>0) player.x=s.x-player.w;
+        if(player.vx<0) player.x=s.x+s.w;
+        player.vx=0;
+      } else {
+        if(player.vy>0){
+          player.y=s.y-player.h;
+          player.vy=0;
+          player.onGround=true;
+        } else if(player.vy<0){
+          player.y=s.y+s.h;
+          player.vy=0;
+        }
+      }
+    }
+  }
+
+  function spawnParticles(x,y,count,color){
+    for(let i=0;i<count;i++){
+      state.particles.push({
+        x,y,
+        vx:(Math.random()-0.5)*4,
+        vy:(Math.random()-0.5)*4,
+        life: 20 + Math.random()*20,
+        color
+      });
+    }
+  }
+
+  function loseLife(){
+    if(state.invuln>0 || state.over) return;
+    state.lives--;
+    state.invuln=90;
+    state.screenShake = 8;
+    spawnParticles(player.x+player.w/2, player.y+player.h/2, 12, 'rgba(255,120,160,.8)');
+    if(state.lives<=0){
+      state.over=true;
+      state.scene='end';
+      showOverlay('The shadows consumed you',`You rescued ${state.souls} souls before the mansion won.`,'Play Again');
+    } else {
+      player.x=levels[state.levelIndex].start.x;
+      player.y=levels[state.levelIndex].start.y;
+      player.vx=0;
+      player.vy=-4;
+      state.cameraX=Math.max(0,player.x-W*.25);
+    }
+    updateHUD();
+  }
+
+  function completeLevel(){
+    if(state.levelIndex < levels.length-1){
+      state.levelIndex++;
+      cloneLevel(state.levelIndex);
+      state.scene='map';
+      started=false;
+      showOverlay('Haunted World Map',`Level ${state.levelIndex} cleared. The path opens to ${levels[state.levelIndex].name}.`,'Enter Next Level');
+    } else {
+      state.over=true;
+      state.won=true;
+      state.scene='end';
+      showOverlay('You escaped the haunted mansion!',`Final score: ${state.souls} souls collected.`,'Play Again');
+    }
+    updateHUD();
+  }
+
+  function damageBoss(){
+    if(!boss || !boss.alive) return;
+    boss.hits--;
+    boss.flash = 10;
+    player.vy = -9;
+    state.screenShake = 6;
+    spawnParticles(boss.x+boss.w/2, boss.y+boss.h/2, 14, 'rgba(255,255,255,.85)');
+    if(boss.hits<=0){
+      boss.alive = false;
+      bossProjectiles = [];
+      spawnParticles(boss.x+boss.w/2, boss.y+boss.h/2, 28, 'rgba(180,255,255,.9)');
+    }
+  }
+
+  function spawnBossProjectile(){
+    if(!boss || !boss.alive) return;
+    if(boss.type==='ghostKing'){
+      bossProjectiles.push({x:boss.x+boss.w*.5,y:boss.y+40,r:14,vx:-2.6,vy:-1.4,type:'miniGhost',alive:true});
+    } else {
+      bossProjectiles.push({x:boss.x+20,y:boss.y+34,r:12,vx:-3.2,vy:-3.8,type:'sprout',alive:true,spin:0});
+    }
+  }
+
+  function update(dt){
+    if(!started || state.over || state.scene==='map' || state.scene==='title') return;
+
+    for(const m of movers){
+      m.y = m.baseY + Math.sin(performance.now()*m.speed+m.phase)*m.amp;
+    }
+
+    if(keys.left){ player.vx -= player.speed; player.facing=-1; }
+    if(keys.right){ player.vx += player.speed; player.facing=1; }
+    if(!keys.left && !keys.right){
+      player.vx *= friction;
+      if(Math.abs(player.vx)<0.05) player.vx=0;
+    }
+
+    const maxSpeed = player.maxSpeed*(state.powerTimer>0?1.2:1);
+    player.vx = Math.max(-maxSpeed,Math.min(maxSpeed,player.vx));
+
+    if(keys.jump && player.onGround){
+      player.vy = -(player.jumpPower + (state.powerTimer>0?1.4:0));
+      player.onGround = false;
+    }
+
+    player.vy += gravity;
+    player.x += player.vx;
+    resolve('x');
+    player.y += player.vy;
+    player.onGround = false;
+    resolve('y');
+
+    if(player.x<0) player.x=0;
+    if(player.x+player.w>worldWidth) player.x=worldWidth-player.w;
+    if(player.y>H+240) loseLife();
+
+    if(Math.abs(player.vx)>0.18 && player.onGround) player.walkFrame += dt*14;
+    if(state.invuln>0) state.invuln--;
+    if(state.powerTimer>0) state.powerTimer--;
+    if(state.screenShake>0) state.screenShake *= 0.82;
+
+    for(const p of pickups){
+      if(!p.taken && circleRect({x:p.x,y:p.y,r:12},player)){
+        p.taken = true;
+        if(p.kind==='soul'){
+          state.souls++;
+          spawnParticles(p.x,p.y,10,'rgba(200,255,255,.8)');
+        } else {
+          state.powerTimer = 520;
+          spawnParticles(p.x,p.y,12,'rgba(255,235,150,.85)');
+        }
+      }
+    }
+
+    for(const e of enemies){
+      if(!e.alive) continue;
+      e.flap += dt*12;
+      e.x += e.vx*e.dir;
+      if(e.x<e.minX || e.x>e.maxX) e.dir*=-1;
+      e.y += (e.type==='ghost'
+        ? Math.sin(performance.now()*0.005+e.x*0.02)*0.55
+        : Math.sin(performance.now()*0.011+e.x*0.03)*1.1);
+      const hit={x:e.x,y:e.y,w:e.type==='bat'?30:28,h:e.type==='bat'?18:28};
+      if(rects(player,hit)){
+        const stomp = player.vy>0 && player.y+player.h-e.y<18;
+        if(stomp || state.powerTimer>0){
+          e.alive=false;
+          player.vy=-8;
+          spawnParticles(e.x+14,e.y+14,12,'rgba(220,250,255,.85)');
+        } else loseLife();
+      }
+    }
+
+    if(state.levelIndex===2){
+      if(Math.random()<0.018 && state.barrels.length<3){
+        state.barrels.push({x:state.cameraX+W+40,y:472,r:12,vx:-2.4});
+      }
+      for(const b of state.barrels){
+        b.x += b.vx;
+        const hit={x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2};
+        if(rects(player,hit)) loseLife();
+      }
+      state.barrels = state.barrels.filter(b=>b.x>state.cameraX-60);
+    }
+
+    if(boss && boss.alive){
+      boss.flap += dt*9;
+      boss.x += boss.vx*boss.dir;
+      if(boss.x<boss.minX || boss.x>boss.maxX) boss.dir*=-1;
+      boss.y += Math.sin(performance.now()*0.004+boss.x*0.01)*0.75;
+      if(boss.flash>0) boss.flash--;
+      boss.shotTimer += dt;
+      if(boss.shotTimer > (boss.type==='granny'?1.4:1.9)){
+        boss.shotTimer = 0;
+        spawnBossProjectile();
+      }
+      const hit={x:boss.x,y:boss.y,w:boss.w,h:boss.h};
+      if(rects(player,hit)){
+        const stomp = player.vy>0 && player.y+player.h-boss.y<24;
+        if(stomp || state.powerTimer>0) damageBoss();
+        else loseLife();
+      }
+    }
+
+    for(const proj of bossProjectiles){
+      if(!proj.alive) continue;
+      proj.x += proj.vx;
+      proj.y += proj.vy;
+      if(proj.type==='sprout'){
+        proj.vy += 0.16;
+        proj.spin += dt*10;
+      } else {
+        proj.y += Math.sin(performance.now()*0.01+proj.x*0.05)*0.8;
+      }
+      const hit={x:proj.x-proj.r,y:proj.y-proj.r,w:proj.r*2,h:proj.r*2};
+      if(rects(player,hit)){
+        if(player.vy>0 && player.y+player.h-hit.y<18){
+          proj.alive=false;
+          player.vy=-6;
+          spawnParticles(proj.x,proj.y,10,'rgba(230,255,255,.85)');
+        } else if(state.powerTimer>0){
+          proj.alive=false;
+          spawnParticles(proj.x,proj.y,8,'rgba(255,240,160,.8)');
+        } else loseLife();
+      }
+      if(proj.x<state.cameraX-100 || proj.x>state.cameraX+W+100 || proj.y>H+200) proj.alive=false;
+    }
+
+    for(const pt of state.particles){
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.life -= 1;
+      pt.vy += 0.03;
+    }
+    state.particles = state.particles.filter(p=>p.life>0);
+
+    if((!boss || !boss.alive) && player.x+player.w>goal.x && player.y+player.h>goal.y) completeLevel();
+
+    const targetCam = player.x-W*0.35;
+    state.cameraX += (targetCam-state.cameraX)*0.12;
+    state.cameraX = Math.max(0,Math.min(state.cameraX,worldWidth-W));
+
+    updateHUD();
+  }
+
+  function rr(x,y,w,h,r,fill=true){
+    const rad = Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rad,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rad);
+    ctx.arcTo(x+w,y+h,x,y+h,rad);
+    ctx.arcTo(x,y+h,x,y,rad);
+    ctx.arcTo(x,y,x+w,y,rad);
+    ctx.closePath();
+    if(fill) ctx.fill();
+  }
+
+  function updateHUD(){
+    const secs=Math.floor((performance.now()-state.startTs)/1000), mm=Math.floor(secs/60), ss=String(secs%60).padStart(2,'0');
+    leftHud.textContent=`Souls: ${state.souls} · Lives: ${state.lives}`;
+    rightHud.textContent=`${levels[state.levelIndex].name} · ${mm}:${ss}`;
+    centerHud.textContent=(boss&&boss.alive)?`👻 Haunted Shadows Paranormal · Boss HP ${boss.hits}`:(state.powerTimer>0?'🕯️ Lantern Shield':'👻 Haunted Shadows Paranormal');
+  }
+
+  function drawMist(x,y,w){
+    ctx.fillStyle='rgba(255,255,255,.07)';
+    ctx.beginPath();
+    ctx.ellipse(x,y,w,24,0,0,Math.PI*2);
+    ctx.ellipse(x+w*0.4,y+8,w*0.8,18,0,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawBackground(){
+    const L=levels[state.levelIndex];
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,L.skyTop); g.addColorStop(0.55,L.skyMid); g.addColorStop(1,L.skyBot);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+    ctx.fillStyle='rgba(255,244,210,.95)';
+    ctx.beginPath(); ctx.arc(W-88,86,34,0,Math.PI*2); ctx.fill();
+
+    for(let i=0;i<6;i++){
+      const x=((i*200)-state.cameraX*(0.12+i*0.02))%(W+240)-140;
+      drawMist(x,110+i*46,120+i*12);
+    }
+
+    drawLevelProps();
+  }
+
+  function drawLevelProps(){
+    if(state.levelIndex===0) drawPrisonProps();
+    if(state.levelIndex===1) drawMansionProps();
+    if(state.levelIndex===2) drawPubProps();
+    if(state.levelIndex===3) drawDollProps();
+  }
+
+  function drawPrisonProps(){
+    for(let i=0;i<8;i++){
+      const x=(i*260-state.cameraX*0.3)%(W+300)-50;
+      ctx.fillStyle='#1b1e2b';
+      ctx.fillRect(x,200,6,200);
+      ctx.fillRect(x+18,200,6,200);
+      ctx.fillStyle='#2a2f45';
+      ctx.fillRect(x,200,24,10);
+
+      const swing=Math.sin(performance.now()*0.003+i)*8;
+      ctx.save();
+      ctx.translate(x+12,210);
+      ctx.rotate(swing*0.02);
+      ctx.fillStyle='#ffd27a';
+      ctx.fillRect(-4,0,8,14);
+      ctx.fillStyle='rgba(255,220,120,.16)';
+      ctx.beginPath(); ctx.arc(0,14,18,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawMansionProps(){
+    for(let i=0;i<5;i++){
+      const x=(i*320-state.cameraX*0.25)%(W+350);
+      ctx.fillStyle='#2c1e2e';
+      ctx.fillRect(x,260,90,160);
+      ctx.beginPath();
+      ctx.moveTo(x+8,260); ctx.lineTo(x+45,225); ctx.lineTo(x+82,260); ctx.closePath(); ctx.fill();
+      const flick=(Math.sin(performance.now()*0.008+i)>0.2);
+      ctx.fillStyle=flick?'#ffd27a':'#3b273a';
+      ctx.fillRect(x+20,290,14,18);
+      ctx.fillRect(x+50,320,14,18);
+    }
+  }
+
+  function drawPubProps(){
+    for(let i=0;i<6;i++){
+      const x=(i*300-state.cameraX*0.28)%(W+350);
+      ctx.fillStyle='#4a2d1f';
+      ctx.fillRect(x,340,80,20);
+      ctx.fillStyle='#6b3f2a';
+      ctx.fillRect(x+10,320,60,20);
+      const bounce=Math.sin(performance.now()*0.01+i)*3;
+      ctx.fillStyle='#c9a36a';
+      ctx.fillRect(x+30,300+bounce,10,20);
+      ctx.fillRect(x+44,304-bounce*0.4,10,16);
+    }
+  }
+
+  function drawDollProps(){
+    for(let i=0;i<7;i++){
+      const x=(i*260-state.cameraX*0.3)%(W+320);
+      ctx.fillStyle='#3a2a3f';
+      ctx.fillRect(x,260,70,140);
+      ctx.fillStyle='#5a4860';
+      ctx.fillRect(x+8,270,54,120);
+      const blink=Math.sin(performance.now()*0.02+i)>0.8;
+      ctx.fillStyle='#e7d7f5';
+      ctx.beginPath(); ctx.arc(x+35,300,12,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=blink?'#ff6b6b':'#2a3950';
+      ctx.fillRect(x+30,295,2,3);
+      ctx.fillRect(x+38,295,2,3);
+      ctx.fillRect(x+33,303,4,2);
+    }
+  }
+
+  function drawSolid(s,ox){
+    const x=s.x+ox;
+    if(x+s.w<-100||x>W+100) return;
+    if(s.type==='floor'){
+      const grad=ctx.createLinearGradient(0,s.y,0,s.y+s.h);
+      grad.addColorStop(0,'#7b8cb8'); grad.addColorStop(0.07,'#505978'); grad.addColorStop(1,'#2e3148');
+      ctx.fillStyle=grad; ctx.fillRect(x,s.y,s.w,s.h);
+      ctx.fillStyle='#a0afd9'; ctx.fillRect(x,s.y,s.w,5);
+      ctx.fillStyle='rgba(255,255,255,.08)';
+      for(let i=0;i<s.w;i+=44) ctx.fillRect(x+i,s.y+14,20,6);
+    } else if(s.type==='stone'||s.type==='moving'){
+      const grad=ctx.createLinearGradient(0,s.y,0,s.y+s.h);
+      grad.addColorStop(0,'#b7c2e2'); grad.addColorStop(0.16,'#8c97be'); grad.addColorStop(1,'#656e95');
+      ctx.fillStyle=grad; rr(x,s.y,s.w,s.h,8,true);
+      ctx.fillStyle='rgba(255,255,255,.16)'; rr(x+2,s.y+2,s.w-4,3,2,true);
+    } else {
+      const grad=ctx.createLinearGradient(0,s.y,0,s.y+s.h);
+      grad.addColorStop(0,'#845339'); grad.addColorStop(1,'#4d2b1d');
+      ctx.fillStyle=grad; rr(x,s.y,s.w,s.h,10,true);
+      ctx.fillStyle='rgba(255,255,255,.12)'; rr(x+5,s.y+5,s.w-10,4,3,true);
+    }
+  }
+
+  function drawPickup(p,ox){
+    if(p.taken) return;
+    const x=p.x+ox;
+    if(x<-40||x>W+40) return;
+    const bob=Math.sin(performance.now()*0.005+p.phase)*4;
+    if(p.kind==='soul'){
+      ctx.fillStyle='#cbfbff';
+      ctx.beginPath();
+      ctx.arc(x,p.y+bob,11,Math.PI,0);
+      ctx.lineTo(x+11,p.y+bob+11);
+      ctx.quadraticCurveTo(x+5,p.y+bob+6,x,p.y+bob+13);
+      ctx.quadraticCurveTo(x-5,p.y+bob+6,x-11,p.y+bob+11);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#29475c';
+      ctx.fillRect(x-4,p.y+bob-2,2,3);
+      ctx.fillRect(x+2,p.y+bob-2,2,3);
+    } else {
+      ctx.fillStyle='rgba(255,238,160,.18)';
+      ctx.beginPath(); ctx.arc(x,p.y+bob-12,24,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#f6d37a'; rr(x-8,p.y+bob-10,16,20,4,true);
+      ctx.fillStyle='#fff4c1';
+      ctx.beginPath(); ctx.arc(x,p.y+bob-14,8,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawEnemy(e,ox){
+    if(!e.alive) return;
+    const x=e.x+ox;
+    if(x<-70||x>W+70) return;
+    if(e.type==='ghost'){
+      ctx.fillStyle='#eefcff';
+      ctx.beginPath();
+      ctx.arc(x+14,e.y+12,13,Math.PI,0);
+      ctx.lineTo(x+27,e.y+24);
+      ctx.quadraticCurveTo(x+23,e.y+30,x+19,e.y+25);
+      ctx.quadraticCurveTo(x+14,e.y+32,x+10,e.y+25);
+      ctx.quadraticCurveTo(x+6,e.y+30,x+1,e.y+25);
+      ctx.lineTo(x+1,e.y+12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#2a3950'; ctx.fillRect(x+8,e.y+10,3,5); ctx.fillRect(x+17,e.y+10,3,5);
+    } else {
+      const flap=Math.sin(e.flap)*4;
+      ctx.fillStyle='#5a4694';
+      ctx.beginPath();
+      ctx.moveTo(x,e.y+10);
+      ctx.quadraticCurveTo(x+6,e.y-flap,x+14,e.y+4);
+      ctx.quadraticCurveTo(x+22,e.y-flap,x+28,e.y+10);
+      ctx.lineTo(x+18,e.y+18); ctx.lineTo(x+10,e.y+18);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function drawBoss(ox){
+    if(!boss||!boss.alive) return;
+    const x=boss.x+ox, y=boss.y;
+    if(x<-120||x>W+120) return;
+
+    if(boss.flash>0){
+      ctx.fillStyle='rgba(255,140,180,.28)';
+      ctx.beginPath(); ctx.arc(x+boss.w/2,y+boss.h/2,62,0,Math.PI*2); ctx.fill();
+    }
+
+    if(boss.type==='granny'){
+      ctx.fillStyle='#7f5f4d'; rr(x+18,y+20,48,58,18,true);
+      ctx.fillStyle='#d9d7ea'; ctx.beginPath(); ctx.arc(x+43,y+24,24,Math.PI,0); ctx.fill();
+      ctx.fillStyle='#f1d6bf'; ctx.beginPath(); ctx.arc(x+43,y+38,20,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#d7e8ff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(x+37,y+37,6,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x+49,y+37,6,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#4f8f3a'; rr(x+10,y+70,66,18,8,true);
+    } else {
+      ctx.fillStyle='#f3fbff';
+      ctx.beginPath();
+      ctx.arc(x+44,y+34,38,Math.PI,0);
+      ctx.lineTo(x+82,y+78);
+      ctx.quadraticCurveTo(x+70,y+92,x+58,y+80);
+      ctx.quadraticCurveTo(x+44,y+96,x+30,y+80);
+      ctx.quadraticCurveTo(x+18,y+92,x+6,y+78);
+      ctx.lineTo(x+6,y+34);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#2a3950';
+      ctx.fillRect(x+26,y+30,7,10); ctx.fillRect(x+52,y+30,7,10); ctx.fillRect(x+34,y+52,16,6);
+    }
+  }
+
+  function drawBossProjectiles(ox){
+    for(const p of bossProjectiles){
+      if(!p.alive) continue;
+      const x=p.x+ox, y=p.y;
+      if(p.type==='sprout'){
+        ctx.save();
+        ctx.translate(x,y); ctx.rotate(p.spin||0);
+        ctx.fillStyle='#63a948';
+        ctx.beginPath(); ctx.ellipse(0,0,10,14,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#8fcf73'; ctx.fillRect(-2,-16,4,8);
+        ctx.restore();
+      } else {
+        ctx.fillStyle='#dff8ff';
+        ctx.beginPath();
+        ctx.arc(x,y-4,p.r,Math.PI,0);
+        ctx.lineTo(x+p.r,y+p.r-2);
+        ctx.quadraticCurveTo(x+5,y+8,x,y+p.r);
+        ctx.quadraticCurveTo(x-5,y+8,x-p.r,y+p.r-2);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  function drawGoal(ox){
+    const x=goal.x+ox;
+    const pole=ctx.createLinearGradient(0,goal.y-goal.h,0,goal.y);
+    pole.addColorStop(0,'#aab0ca'); pole.addColorStop(1,'#656b88');
+    ctx.fillStyle=pole; rr(x,goal.y-goal.h,goal.w,goal.h,8,true);
+    ctx.fillStyle='#9cffb8';
+    ctx.beginPath();
+    ctx.moveTo(x+goal.w,goal.y-goal.h+12);
+    ctx.quadraticCurveTo(x+goal.w+22,goal.y-goal.h+8,x+goal.w+38,goal.y-goal.h+24);
+    ctx.quadraticCurveTo(x+goal.w+18,goal.y-goal.h+28,x+goal.w,goal.y-goal.h+32);
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawPlayer(ox){
+    const x=player.x+ox;
+    if(state.invuln>0&&Math.floor(state.invuln/5)%2===0) return;
+    if(state.powerTimer>0){
+      ctx.fillStyle='rgba(180,220,255,.24)';
+      ctx.beginPath(); ctx.arc(x+15,player.y+19,28,0,Math.PI*2); ctx.fill();
+    }
+    const step=Math.sin(player.walkFrame)*2;
+    const robe=ctx.createLinearGradient(0,player.y+8,0,player.y+34);
+    robe.addColorStop(0,'#9fd2ff'); robe.addColorStop(1,'#427cff');
+    ctx.fillStyle='#dcefff'; rr(x+5,player.y,18,9,4,true);
+    ctx.fillStyle=robe; rr(x,player.y+8,30,13,6,true);
+    ctx.fillStyle='#f0d2b6'; rr(x+7,player.y+10,16,10,4,true);
+    const body=ctx.createLinearGradient(0,player.y+20,0,player.y+34);
+    body.addColorStop(0,'#3557bf'); body.addColorStop(1,'#233f91');
+    ctx.fillStyle=body; rr(x+5,player.y+20,19,11,4,true);
+    ctx.fillStyle='#171f4a'; rr(x+4,player.y+30+(player.onGround?step:0),8,8,3,true);
+    ctx.fillStyle='#171f4a'; rr(x+17,player.y+30-(player.onGround?step:0),8,8,3,true);
+    ctx.fillStyle='rgba(255,255,255,.18)'; rr(x+2,player.y+9,4,12,2,true);
+  }
+
+  function drawParticles(ox){
+    for(const pt of state.particles){
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x+ox, pt.y, 3, 3);
+    }
+  }
+
+  function drawWorldMap(){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#2d204e'); g.addColorStop(1,'#100c1b');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<5;i++) drawMist(80+i*130,90+i*55,80+i*6);
+    const pts=[
+      {x:W*0.14,y:H*0.73,label:'Level 1'},
+      {x:W*0.35,y:H*0.58,label:'Level 2'},
+      {x:W*0.56,y:H*0.44,label:'Level 3'},
+      {x:W*0.76,y:H*0.30,label:'Level 4'},
+      {x:W*0.90,y:H*0.20,label:'Exit'}
+    ];
+    ctx.strokeStyle='rgba(255,214,115,.55)';
+    ctx.lineWidth=6; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y);
+    ctx.stroke();
+    pts.forEach((p,i)=>{
+      ctx.fillStyle=i<=state.levelIndex?'#ffd36d':'rgba(255,255,255,.14)';
+      ctx.beginPath(); ctx.arc(p.x,p.y,22,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#1a1027'; ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#f6f2ff'; ctx.font='bold 18px Arial'; ctx.textAlign='center'; ctx.fillText(p.label,p.x,p.y+48);
+    });
+    ctx.fillStyle='#f6f2ff'; ctx.font='bold 28px Arial'; ctx.fillText('Haunted World Map',W/2,80);
+    ctx.font='18px Arial'; ctx.fillText('The curtain rises on the next level...',W/2,110);
+  }
+
+  function drawTitleBackdrop(){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#261a48'); g.addColorStop(1,'#09070f');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<6;i++) drawMist(60+i*140,80+(i%3)*50,90+i*8);
+    ctx.textAlign='center';
+    ctx.fillStyle='#ecf7ff'; ctx.font='bold 42px Arial'; ctx.fillText('Haunted Shadows',W/2,H*0.28);
+    ctx.fillStyle='#9fd2ff'; ctx.font='bold 34px Arial'; ctx.fillText('Paranormal',W/2,H*0.36);
+  }
+
+  function draw(){
+    if(state.scene==='map'){ drawWorldMap(); return; }
+    if(state.scene==='title') drawTitleBackdrop(); else drawBackground();
+
+    ctx.save();
+    const shakeX = state.screenShake ? (Math.random()-0.5)*state.screenShake : 0;
+    const shakeY = state.screenShake ? (Math.random()-0.5)*state.screenShake : 0;
+    ctx.translate(shakeX, shakeY);
+
+    const ox = -state.cameraX;
+    if(state.scene!=='title'){
+      for(const s of solids) drawSolid(s,ox);
+      for(const m of movers) drawSolid(m,ox);
+      for(const p of pickups) drawPickup(p,ox);
+      for(const e of enemies) drawEnemy(e,ox);
+      if(state.levelIndex===2){
+        for(const b of state.barrels){
+          ctx.fillStyle='#7a4a2e';
+          ctx.beginPath(); ctx.arc(b.x+ox,b.y,b.r,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='rgba(255,255,255,.14)';
+          ctx.fillRect(b.x+ox-3,b.y-10,6,20);
+        }
+      }
+      drawBoss(ox);
+      drawBossProjectiles(ox);
+      drawGoal(ox);
+      drawPlayer(ox);
+      drawParticles(ox);
+      ctx.fillStyle='rgba(255,255,255,.05)';
+      ctx.fillRect(0,H-110,W,110);
+    }
+    ctx.restore();
+  }
+
+  function frame(ts){
+    const dt=(ts-lastTime)/1000;
+    lastTime=ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function bindHold(btn,key){
+    const on=e=>{e.preventDefault(); keys[key]=true;};
+    const off=e=>{e.preventDefault(); keys[key]=false;};
+    btn.addEventListener('touchstart',on,{passive:false});
+    btn.addEventListener('touchend',off,{passive:false});
+    btn.addEventListener('touchcancel',off,{passive:false});
+    btn.addEventListener('mousedown',on);
+    btn.addEventListener('mouseup',off);
+    btn.addEventListener('mouseleave',off);
+  }
+
+  bindHold(document.getElementById('leftBtn'),'left');
+  bindHold(document.getElementById('rightBtn'),'right');
+
+  const jumpBtn=document.getElementById('jumpBtn');
+  const doJump=e=>{ e.preventDefault(); keys.jump=true; setTimeout(()=>keys.jump=false,120); };
+  jumpBtn.addEventListener('touchstart',doJump,{passive:false});
+  jumpBtn.addEventListener('mousedown',doJump);
+
+  addEventListener('keydown',e=>{
+    if(['ArrowLeft','ArrowRight','ArrowUp','Space','Enter'].includes(e.code)) e.preventDefault();
+    if(e.code==='ArrowLeft') keys.left=true;
+    if(e.code==='ArrowRight') keys.right=true;
+    if(e.code==='ArrowUp'||e.code==='Space') keys.jump=true;
+    if(e.code==='Enter'&&state.scene==='title'){
+      hideOverlay(); started=true; state.scene='playing';
+    }
+  });
+
+  addEventListener('keyup',e=>{
+    if(e.code==='ArrowLeft') keys.left=false;
+    if(e.code==='ArrowRight') keys.right=false;
+    if(e.code==='ArrowUp'||e.code==='Space') keys.jump=false;
+  });
+
+  startBtn.addEventListener('click',()=>{
+    hideOverlay();
+    if(state.scene==='title'||state.scene==='map'){
+      started=true; state.scene='playing';
+    } else if(state.scene==='end'){
+      resetGame(true);
+    }
+  });
+
+  restartBtn.addEventListener('click',()=>{ started=false; resetGame(true); });
+  soundBtn.addEventListener('click',()=>{ soundOn=!soundOn; soundBtn.textContent=soundOn?'🔊 Sound':'🔇 Sound'; });
+
+  cloneLevel(0);
+  showTitle();
+  overlay.style.display='flex';
+  updateHUD();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
